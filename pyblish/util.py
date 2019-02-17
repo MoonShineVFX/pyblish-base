@@ -137,7 +137,9 @@ def publish_iter(context=None, plugins=None, targets=None):
     # Mutable state, used in Iterator
     state = {
         "nextOrder": None,
-        "ordersWithError": set()
+        "ordersWithError": set(),
+        "restedInstances": list(),
+        "validated": False,
     }
 
     # Second pass, the remainder
@@ -171,6 +173,9 @@ def publish_iter(context=None, plugins=None, targets=None):
             print(error)
 
         yield result
+
+    for index, instance_ in reversed(state["restedInstances"]):
+        context.insert(index, instance_)
 
     api.emit("published", context=context)
 

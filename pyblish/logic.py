@@ -292,6 +292,12 @@ def instances_by_plugin(instances, plugin):
 
     for instance in instances:
 
+        if (instance.data.get("validationOnly", False) and
+                plugin.order >= (Validator.order + 0.5)):
+            log.debug("%s has been set to validation only, consider "
+                      "%s not compatible." % (instance, plugin))
+            continue
+
         if "*" in plugin.families:
             compatible.append(instance)
             continue
@@ -351,7 +357,9 @@ def Iterator(plugins, context, state=None):
     test = registered_test()
     state = state or {
         "nextOrder": None,
-        "ordersWithError": set()
+        "ordersWithError": set(),
+        "restedInstances": list(),
+        "validated": False,
     }
 
     # We'll add "default" target if no targets are registered. This happens
@@ -370,6 +378,16 @@ def Iterator(plugins, context, state=None):
         message = test(**state)
         if message:
             raise StopIteration("Stopped due to %s" % message)
+
+        if (not state["validated"] and
+                plugin.order >= (Validator.order + 0.5)):
+            # Remove validation-only instances from context when
+            # validation is over
+            state["validated"] = True
+            for index, instance in enumerate(list(context)):
+                if instance.data.get("validationOnly", False):
+                    context.remove(instance)
+                    state["restedInstances"].append((index, instance))
 
         instances = instances_by_plugin(context, plugin)
         if plugin.__instanceEnabled__:
